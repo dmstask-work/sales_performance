@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Performance Dashboard - Metabase Edition</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #fbfcfd;
+    }
+  </style>
+</head>
+<body class="text-slate-800 p-4 md:p-8">
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Top Bar: Title & Sales Filter -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-1 gap-3">
+      <div>
+        <h1 class="text-lg font-bold text-slate-800">Sales & Revenue Performance (Q3)</h1>
+        <p class="text-xs text-slate-500">Juli - September 2026</p>
+      </div>
+      
+      <!-- Interactive Sales Filter -->
+      <div class="flex items-center gap-2">
+        <label for="salesSelect" class="text-xs font-semibold text-slate-500">Filter Sales:</label>
+        <div class="relative">
+          <select id="salesSelect" onchange="updateDashboard(this.value)" class="appearance-none bg-white border border-slate-300 hover:border-slate-400 text-slate-800 text-xs font-bold rounded-md pl-3 pr-8 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+            <option value="All Sales">All Sales (5 Reps)</option>
+            <option value="Ms Arina">Ms Arina</option>
+            <option value="Ms Ayu">Ms Ayu</option>
+            <option value="Ms Nur">Ms Nur</option>
+            <option value="Ms Shinta">Ms Shinta</option>
+            <option value="Ms Yuyun">Ms Yuyun</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 Clean KPI Cards Row (Clean, No Subtitle, Unit: jt) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      
+      <!-- Card 1: Total Revenue -->
+      <div class="bg-white border border-slate-200/90 rounded-lg p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs">
+          <span class="font-medium text-slate-500">Total Revenue</span>
+          <span class="text-slate-300 hover:text-slate-500 cursor-pointer text-sm font-bold leading-none">···</span>
+        </div>
+        <div class="mt-3">
+          <span id="cardRevenue" class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Rp 452.3 jt</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Total Sesi -->
+      <div class="bg-white border border-slate-200/90 rounded-lg p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs">
+          <span class="font-medium text-slate-500">Total Sesi</span>
+          <span class="text-slate-300 hover:text-slate-500 cursor-pointer text-sm font-bold leading-none">···</span>
+        </div>
+        <div class="mt-3">
+          <span id="cardSesi" class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">652</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Target Q3 -->
+      <div class="bg-white border border-slate-200/90 rounded-lg p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs">
+          <span class="font-medium text-slate-500">Target Q3</span>
+          <span class="text-slate-300 hover:text-slate-500 cursor-pointer text-sm font-bold leading-none">···</span>
+        </div>
+        <div class="mt-3">
+          <span id="cardTarget" class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">495 jt</span>
+        </div>
+      </div>
+
+      <!-- Card 4: % to Target -->
+      <div class="bg-white border border-slate-200/90 rounded-lg p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs">
+          <span class="font-medium text-slate-500">% to Target</span>
+          <span class="text-slate-300 hover:text-slate-500 cursor-pointer text-sm font-bold leading-none">···</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="cardPct" class="text-2xl md:text-3xl font-bold text-amber-700 tracking-tight">91.4%</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Charts Row: Trend Revenue (Left) & Top 5 Combined with Toggle (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-1">
+
+      <!-- Left Chart: Trend Revenue (Juta) -->
+      <div class="bg-white border border-slate-200/90 rounded-xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-semibold text-slate-700">Trend Revenue (Juta)</h3>
+          <span class="text-slate-300 hover:text-slate-500 cursor-pointer text-sm font-bold">···</span>
+        </div>
+
+        <!-- SVG Line Chart with Goal Line -->
+        <div class="relative w-full h-64 pt-2">
+          <svg id="trendSvg" class="w-full h-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+            <!-- Grid lines -->
+            <line x1="50" y1="30" x2="480" y2="30" stroke="#f1f5f9" stroke-width="1" />
+            <line x1="50" y1="80" x2="480" y2="80" stroke="#f1f5f9" stroke-width="1" />
+            <line x1="50" y1="130" x2="480" y2="130" stroke="#f1f5f9" stroke-width="1" />
+            <line x1="50" y1="170" x2="480" y2="170" stroke="#e2e8f0" stroke-width="1" />
+
+            <!-- Y-Axis Labels -->
+            <text x="40" y="34" font-size="10" fill="#94a3b8" text-anchor="end" id="yAxisTop">180</text>
+            <text x="40" y="84" font-size="10" fill="#94a3b8" text-anchor="end" id="yAxisMid">120</text>
+            <text x="40" y="134" font-size="10" fill="#94a3b8" text-anchor="end" id="yAxisLow">60</text>
+            <text x="40" y="174" font-size="10" fill="#94a3b8" text-anchor="end">0</text>
+
+            <!-- Target Line (Dashed) -->
+            <line id="goalLine" x1="50" y1="45" x2="480" y2="45" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,4" />
+            <text id="goalText" x="480" y="40" font-size="9" font-weight="bold" fill="#64748b" text-anchor="end">Target: 165 jt</text>
+
+            <!-- Trend Line -->
+            <path id="trendPath" d="M 120 50 L 265 65 L 410 58" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+            <!-- Data Points -->
+            <circle id="point1" cx="120" cy="50" r="4.5" fill="#ffffff" stroke="#0284c7" stroke-width="2.5" />
+            <circle id="point2" cx="265" cy="65" r="4.5" fill="#ffffff" stroke="#0284c7" stroke-width="2.5" />
+            <circle id="point3" cx="410" cy="58" r="4.5" fill="#ffffff" stroke="#0284c7" stroke-width="2.5" />
+
+            <!-- Data Labels -->
+            <text id="label1" x="120" y="38" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="middle">158.7 jt</text>
+            <text id="label2" x="265" y="53" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="middle">143.1 jt</text>
+            <text id="label3" x="410" y="46" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="middle">150.6 jt</text>
+
+            <!-- X-Axis Labels -->
+            <text x="120" y="190" font-size="10" fill="#64748b" text-anchor="middle">Juli</text>
+            <text x="265" y="190" font-size="10" fill="#64748b" text-anchor="middle">Agustus</text>
+            <text x="410" y="190" font-size="10" fill="#64748b" text-anchor="middle">September</text>
+          </svg>
+        </div>
+        <div class="text-[11px] text-slate-400 text-center mt-2">Month</div>
+      </div>
+
+      <!-- Right Chart: Top 5 Combined with Toggle [Source] [Kategori] (Matches Screenshot) -->
+      <div class="bg-white border border-slate-200/90 rounded-xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+        
+        <!-- Header with Title & Source / Kategori Toggle -->
+        <div class="flex items-center justify-between mb-1">
+          <div class="flex items-center flex-wrap gap-2">
+            <h3 id="combinedTitle" class="text-sm font-bold text-slate-800">Top 5 Source by Revenue (Rp Juta)</h3>
+            
+            <!-- Toggle Pills -->
+            <div class="inline-flex bg-slate-100 p-0.5 rounded-md text-xs font-semibold">
+              <button id="btnSrc" onclick="switchTab('source')" class="px-2.5 py-1 rounded bg-white shadow-xs text-blue-600 font-bold transition">Source</button>
+              <button id="btnKat" onclick="switchTab('kategori')" class="px-2.5 py-1 rounded text-slate-500 hover:text-slate-800 transition">Kategori</button>
+            </div>
+          </div>
+          <span class="text-slate-300 hover:text-slate-500 cursor-pointer text-sm font-bold">···</span>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex items-center gap-2 text-xs text-slate-500 mt-2 mb-2">
+          <span id="legendDot" class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+          <span id="legendText">Source Revenue (Rp Juta)</span>
+        </div>
+
+        <!-- SVG Horizontal Bar Chart matching Reference Image -->
+        <div class="relative w-full h-56 pt-1">
+          <svg id="barSvg" class="w-full h-full" viewBox="0 0 500 190" preserveAspectRatio="none">
+            <!-- Gridlines -->
+            <line x1="125" y1="15" x2="125" y2="160" stroke="#f1f5f9" stroke-width="1" />
+            <line x1="285" y1="15" x2="285" y2="160" stroke="#f1f5f9" stroke-width="1" />
+            <line x1="445" y1="15" x2="445" y2="160" stroke="#f1f5f9" stroke-width="1" />
+            <line x1="125" y1="160" x2="480" y2="160" stroke="#e2e8f0" stroke-width="1" />
+
+            <!-- Bars container populated via JS -->
+            <g id="barsGroup"></g>
+
+            <!-- X Axis ticks & values -->
+            <text x="125" y="178" font-size="9.5" fill="#94a3b8" text-anchor="middle">0</text>
+            <text x="285" y="178" font-size="9.5" fill="#94a3b8" text-anchor="middle" id="axisMidVal">135</text>
+            <text x="445" y="178" font-size="9.5" fill="#94a3b8" text-anchor="middle" id="axisMaxVal">270</text>
+          </svg>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    const data = {
+      "All Sales": {
+        "revenue_str": "Rp 452.3 jt",
+        "sesi": 652,
+        "target_str": "495 jt",
+        "pct_str": "91.4%",
+        "goal_num": 165,
+        "monthly_rev": [158.7, 143.1, 150.6],
+        "sources": [
+          { "name": "Lanjutan", "val": 226.4, "pct": "50%" },
+          { "name": "Web", "val": 79.8, "pct": "17.6%" },
+          { "name": "Organik", "val": 70.1, "pct": "15.5%" },
+          { "name": "Ads", "val": 46.2, "pct": "10.2%" },
+          { "name": "IG", "val": 15.3, "pct": "3.4%" }
+        ],
+        "kategori": [
+          { "name": "Konseling Reguler", "val": 137.1, "pct": "30.3%" },
+          { "name": "ADHD", "val": 94.7, "pct": "20.9%" },
+          { "name": "MHD", "val": 43.2, "pct": "9.5%" },
+          { "name": "MHCU", "val": 27.7, "pct": "6.1%" },
+          { "name": "Brainspotting Offline", "val": 24.1, "pct": "5.3%" }
+        ]
+      },
+      "Ms Nur": {
+        "revenue_str": "Rp 99.8 jt",
+        "sesi": 145,
+        "target_str": "75 jt",
+        "pct_str": "133.1%",
+        "goal_num": 25,
+        "monthly_rev": [35.3, 34.4, 30.1],
+        "sources": [
+          { "name": "Lanjutan", "val": 55.3, "pct": "55.4%" },
+          { "name": "Organik", "val": 22.9, "pct": "22.9%" },
+          { "name": "Ads", "val": 12.4, "pct": "12.4%" },
+          { "name": "Web", "val": 7.6, "pct": "7.6%" },
+          { "name": "Referral", "val": 1.4, "pct": "1.4%" }
+        ],
+        "kategori": [
+          { "name": "Konseling Reguler", "val": 26.4, "pct": "26.5%" },
+          { "name": "ADHD", "val": 23.1, "pct": "23.1%" },
+          { "name": "Brainspotting Offline", "val": 11.8, "pct": "11.8%" },
+          { "name": "MHCU", "val": 7.2, "pct": "7.2%" },
+          { "name": "MHD", "val": 6.1, "pct": "6.1%" }
+        ]
+      },
+      "Ms Shinta": {
+        "revenue_str": "Rp 103.2 jt",
+        "sesi": 139,
+        "target_str": "105 jt",
+        "pct_str": "98.3%",
+        "goal_num": 35,
+        "monthly_rev": [31.8, 32.9, 38.5],
+        "sources": [
+          { "name": "Lanjutan", "val": 47.3, "pct": "45.8%" },
+          { "name": "Web", "val": 28.8, "pct": "27.9%" },
+          { "name": "Ads", "val": 15.9, "pct": "15.4%" },
+          { "name": "Organik", "val": 7.6, "pct": "7.4%" },
+          { "name": "IG", "val": 2.3, "pct": "2.2%" }
+        ],
+        "kategori": [
+          { "name": "Konseling Reguler", "val": 30.7, "pct": "29.8%" },
+          { "name": "ADHD", "val": 24.4, "pct": "23.6%" },
+          { "name": "ADHD Remaja", "val": 7.6, "pct": "7.4%" },
+          { "name": "ADHD Komprehensif", "val": 6.2, "pct": "6.0%" },
+          { "name": "MHCU", "val": 5.9, "pct": "5.7%" }
+        ]
+      },
+      "Ms Ayu": {
+        "revenue_str": "Rp 95.8 jt",
+        "sesi": 136,
+        "target_str": "105 jt",
+        "pct_str": "91.3%",
+        "goal_num": 35,
+        "monthly_rev": [35.7, 24.8, 35.3],
+        "sources": [
+          { "name": "Lanjutan", "val": 56.7, "pct": "59.2%" },
+          { "name": "Organik", "val": 10.8, "pct": "11.3%" },
+          { "name": "Web", "val": 10.8, "pct": "11.3%" },
+          { "name": "Ads", "val": 8.0, "pct": "8.4%" },
+          { "name": "Referral", "val": 7.7, "pct": "8.0%" }
+        ],
+        "kategori": [
+          { "name": "Konseling Reguler", "val": 31.2, "pct": "32.6%" },
+          { "name": "MHD", "val": 16.6, "pct": "17.3%" },
+          { "name": "Hipnoterapi Offline", "val": 8.9, "pct": "9.2%" },
+          { "name": "ADHD", "val": 8.0, "pct": "8.4%" },
+          { "name": "Brainspotting Offline", "val": 5.9, "pct": "6.2%" }
+        ]
+      },
+      "Ms Arina": {
+        "revenue_str": "Rp 79.2 jt",
+        "sesi": 126,
+        "target_str": "105 jt",
+        "pct_str": "75.4%",
+        "goal_num": 35,
+        "monthly_rev": [30.1, 23.8, 25.2],
+        "sources": [
+          { "name": "Lanjutan", "val": 37.5, "pct": "47.4%" },
+          { "name": "Web", "val": 22.3, "pct": "28.2%" },
+          { "name": "Organik", "val": 10.8, "pct": "13.6%" },
+          { "name": "Ads", "val": 3.8, "pct": "4.8%" },
+          { "name": "IG", "val": 3.0, "pct": "3.8%" }
+        ],
+        "kategori": [
+          { "name": "Konseling Reguler", "val": 25.1, "pct": "31.7%" },
+          { "name": "ADHD", "val": 14.1, "pct": "17.8%" },
+          { "name": "MHD", "val": 9.2, "pct": "11.6%" },
+          { "name": "MHCU", "val": 6.2, "pct": "7.8%" },
+          { "name": "Konseling Pasangan Offline", "val": 3.9, "pct": "4.9%" }
+        ]
+      },
+      "Ms Yuyun": {
+        "revenue_str": "Rp 74.3 jt",
+        "sesi": 106,
+        "target_str": "105 jt",
+        "pct_str": "70.8%",
+        "goal_num": 35,
+        "monthly_rev": [25.7, 27.1, 21.6],
+        "sources": [
+          { "name": "Lanjutan", "val": 29.6, "pct": "39.8%" },
+          { "name": "Organik", "val": 17.9, "pct": "24.1%" },
+          { "name": "Web", "val": 10.4, "pct": "14.0%" },
+          { "name": "IG", "val": 8.5, "pct": "11.4%" },
+          { "name": "Ads", "val": 6.1, "pct": "8.2%" }
+        ],
+        "kategori": [
+          { "name": "ADHD", "val": 25.1, "pct": "33.8%" },
+          { "name": "Konseling Reguler", "val": 23.7, "pct": "31.9%" },
+          { "name": "MHD", "val": 6.0, "pct": "8.0%" },
+          { "name": "MHCU", "val": 4.4, "pct": "5.9%" },
+          { "name": "ADHD Remaja", "val": 4.4, "pct": "5.9%" }
+        ]
+      }
+    };
+
+    let currentSales = 'All Sales';
+    let currentTab = 'source';
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const btnSrc = document.getElementById('btnSrc');
+      const btnKat = document.getElementById('btnKat');
+      const combinedTitle = document.getElementById('combinedTitle');
+      const legendText = document.getElementById('legendText');
+
+      if (tab === 'source') {
+        btnSrc.className = 'px-2.5 py-1 rounded bg-white shadow-xs text-blue-600 font-bold transition';
+        btnKat.className = 'px-2.5 py-1 rounded text-slate-500 hover:text-slate-800 transition';
+        combinedTitle.textContent = 'Top 5 Source by Revenue (Rp Juta)';
+        legendText.textContent = 'Source Revenue (Rp Juta)';
+      } else {
+        btnKat.className = 'px-2.5 py-1 rounded bg-white shadow-xs text-blue-600 font-bold transition';
+        btnSrc.className = 'px-2.5 py-1 rounded text-slate-500 hover:text-slate-800 transition';
+        combinedTitle.textContent = 'Top 5 Kategori by Revenue (Rp Juta)';
+        legendText.textContent = 'Kategori Revenue (Rp Juta)';
+      }
+      renderCombinedBars();
+    }
+
+    function renderCombinedBars() {
+      const d = data[currentSales];
+      const items = (currentTab === 'source') ? d.sources : d.kategori;
+      
+      const maxVal = Math.max(...items.map(x => x.val));
+      let axisMax = 270;
+      if (maxVal <= 35) axisMax = 40;
+      else if (maxVal <= 65) axisMax = 70;
+      else if (maxVal <= 110) axisMax = 120;
+      else if (maxVal <= 150) axisMax = 160;
+      else axisMax = 270;
+
+      document.getElementById('axisMidVal').textContent = Math.round(axisMax / 2);
+      document.getElementById('axisMaxVal').textContent = axisMax;
+
+      const group = document.getElementById('barsGroup');
+      group.innerHTML = '';
+
+      const startX = 125;
+      const totalWidth = 320;
+      const barHeight = 17;
+      const gap = 11;
+      const startY = 20;
+
+      items.forEach((item, idx) => {
+        const y = startY + idx * (barHeight + gap);
+        const w = (item.val / axisMax) * totalWidth;
+
+        // Label on left
+        const textLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textLabel.setAttribute('x', startX - 8);
+        textLabel.setAttribute('y', y + 12);
+        textLabel.setAttribute('font-size', '9.5');
+        textLabel.setAttribute('fill', '#475569');
+        textLabel.setAttribute('text-anchor', 'end');
+        textLabel.textContent = item.name;
+        group.appendChild(textLabel);
+
+        // Bar rect (Clean sky-blue #38bdf8 with rounded corners)
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', startX);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', Math.max(w, 3));
+        rect.setAttribute('height', barHeight);
+        rect.setAttribute('rx', '3');
+        rect.setAttribute('fill', '#38bdf8');
+        group.appendChild(rect);
+
+        // Value text at end of bar: e.g. "226.4 (50%)"
+        const textVal = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textVal.setAttribute('x', startX + w + 8);
+        textVal.setAttribute('y', y + 12);
+        textVal.setAttribute('font-size', '9.5');
+        textVal.setAttribute('font-weight', 'bold');
+        textVal.setAttribute('fill', '#0f172a');
+        textVal.textContent = item.val + ' (' + item.pct + ')';
+        group.appendChild(textVal);
+      });
+    }
+
+    function updateDashboard(salesName) {
+      currentSales = salesName;
+      const d = data[salesName];
+
+      // Update 4 Cards
+      document.getElementById('cardRevenue').textContent = d.revenue_str;
+      document.getElementById('cardSesi').textContent = d.sesi;
+      document.getElementById('cardTarget').textContent = d.target_str;
+      document.getElementById('cardPct').textContent = d.pct_str;
+
+      const cardPct = document.getElementById('cardPct');
+      if (parseFloat(d.pct_str) >= 100) {
+        cardPct.className = 'text-2xl md:text-3xl font-bold text-emerald-600 tracking-tight';
+      } else {
+        cardPct.className = 'text-2xl md:text-3xl font-bold text-amber-700 tracking-tight';
+      }
+
+      // Update Trend SVG Line Chart
+      const revs = d.monthly_rev;
+      const maxRev = Math.max(...revs, d.goal_num);
+      const topY = Math.ceil((maxRev * 1.25) / 10) * 10;
+
+      document.getElementById('yAxisTop').textContent = topY;
+      document.getElementById('yAxisMid').textContent = Math.round(topY * 0.6);
+      document.getElementById('yAxisLow').textContent = Math.round(topY * 0.3);
+
+      function getY(val) {
+        const minYPos = 170;
+        const maxYPos = 30;
+        return minYPos - (val / topY) * (minYPos - maxYPos);
+      }
+
+      const y1 = getY(revs[0]);
+      const y2 = getY(revs[1]);
+      const y3 = getY(revs[2]);
+      const yGoal = getY(d.goal_num);
+
+      document.getElementById('trendPath').setAttribute('d', `M 120 ${y1} L 265 ${y2} L 410 ${y3}`);
+      document.getElementById('point1').setAttribute('cy', y1);
+      document.getElementById('point2').setAttribute('cy', y2);
+      document.getElementById('point3').setAttribute('cy', y3);
+
+      const l1 = document.getElementById('label1');
+      l1.setAttribute('y', y1 - 9);
+      l1.textContent = revs[0].toFixed(1) + ' jt';
+
+      const l2 = document.getElementById('label2');
+      l2.setAttribute('y', y2 - 9);
+      l2.textContent = revs[1].toFixed(1) + ' jt';
+
+      const l3 = document.getElementById('label3');
+      l3.setAttribute('y', y3 - 9);
+      l3.textContent = revs[2].toFixed(1) + ' jt';
+
+      const goalLine = document.getElementById('goalLine');
+      goalLine.setAttribute('y1', yGoal);
+      goalLine.setAttribute('y2', yGoal);
+      const goalText = document.getElementById('goalText');
+      goalText.setAttribute('y', yGoal - 6);
+      goalText.textContent = `Target: ${d.goal_num} jt`;
+
+      // Update Combined Bar Chart
+      renderCombinedBars();
+    }
+
+    // Initialize
+    updateDashboard('All Sales');
+  </script>
+</body>
+</html>
